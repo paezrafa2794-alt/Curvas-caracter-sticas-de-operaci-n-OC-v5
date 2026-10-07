@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Curvas OC para ANOVA</title>
+<style>
+:root{--bg:#f4f7fa;--card:#fff;--ink:#14213d;--mut:#5b6b82;--line:#d6dee9;--acc:#0b6e99;--warn:#c2410c;--ok:#1b7a4b;--c1:#9fb8cf;--c2:#7fa0bf;--c3:#5f88ad;--c4:#44709b;--c5:#2f5985;--c6:#1f456f;--c7:#14335a;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1622;--card:#16212f;--ink:#e6edf6;--mut:#93a4bb;--line:#2a3a50;--acc:#5bb8e0;--warn:#fb923c;--ok:#4ade80;--c1:#35506b;--c2:#44648a;--c3:#5580ab;--c4:#6a9bc6;--c5:#82b0d6;--c6:#9bc3e2;--c7:#b5d4ec}}
+:root[data-theme="dark"]{--bg:#0e1622;--card:#16212f;--ink:#e6edf6;--mut:#93a4bb;--line:#2a3a50;--acc:#5bb8e0;--warn:#fb923c;--ok:#4ade80;--c1:#35506b;--c2:#44648a;--c3:#5580ab;--c4:#6a9bc6;--c5:#82b0d6;--c6:#9bc3e2;--c7:#b5d4ec}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:1080px;margin:0 auto;padding:20px 16px 40px}
+h1{font:600 26px/1.2 Georgia,"Times New Roman",serif;margin:0 0 4px}
+.sub{color:var(--mut);margin:0 0 18px;max-width:62ch}
+.grid{display:grid;grid-template-columns:300px 1fr;gap:16px;align-items:start}
+@media(max-width:820px){.grid{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px}
+label{display:block;font-size:13px;color:var(--mut);margin:12px 0 4px}
+label:first-child{margin-top:0}
+input,select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+button{margin-top:16px;width:100%;padding:10px;border:0;border-radius:6px;background:var(--acc);color:#fff;font:600 15px system-ui,sans-serif;cursor:pointer}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) button{color:#0e1622}}
+.sec{margin-top:8px;background:transparent;color:var(--ink);border:1px solid var(--line)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .sec{color:var(--ink)}}
+.hint{font-size:12px;color:var(--mut);margin-top:4px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px}
+.stat{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:var(--card)}
+.stat b{display:block;font:600 22px/1.2 Georgia,serif}
+.stat span{font-size:12px;color:var(--mut)}
+.stat.main{border-color:var(--acc)}
+.stat.main b{color:var(--acc);font-size:28px}
+h2{font:600 15px/1.3 system-ui,sans-serif;margin:0 0 8px}
+svg{width:100%;height:auto;display:block}
+svg text{fill:var(--mut);font:11px system-ui,sans-serif}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:13px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right}
+th{color:var(--mut);font-weight:500}
+tr.hit td{background:color-mix(in srgb,var(--ok) 14%,transparent);font-weight:600}
+.leg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--mut);margin-top:6px}
+.leg i{display:inline-block;width:16px;height:3px;margin-right:5px;vertical-align:middle;border-radius:2px}
+.err{color:var(--warn);font-size:14px}
+.stack>*+*{margin-top:16px}
+td input{width:84px;padding:4px 6px;text-align:right}
+td:first-child,th:first-child{text-align:center}
+</style>
+</head>
+<body>
+<main>
+<h1>Curvas características de operación (OC)</h1>
+<p class="sub">ANOVA de un factor con efectos fijos. Captura los datos del ejercicio, agrega los valores de n que pruebes y calcula tus propios ν₁, ν₂ y Φ y lee β directamente en la gráfica.</p>
+<div class="grid">
+<section class="card">
+<label for="a">Número de tratamientos (a = k)</label>
+<input id="a" type="number" min="2" step="1" value="4">
+<label for="mode">Tipo de dato del efecto</label>
+<select id="mode"><option value="tau">Suma de desviaciones cuadráticas (Στᵢ²)</option><option value="D">Diferencia mínima entre dos medias (D)</option></select>
+<label for="eff" id="efflab">Στᵢ²</label>
+<input id="eff" type="number" step="any" value="1016.75">
+<div class="hint" id="effh">Con D se usa Στᵢ² = D²/2.</div>
+<label for="sig">Desviación estándar (σ)</label>
+<input id="sig" type="number" step="any" min="0" value="45.17">
+<label for="al">Nivel de significancia (α)</label>
+<input id="al" type="number" step="any" min="0.0001" max="0.5" value="0.05">
+<label for="pw">Potencia mínima (1 − β)</label>
+<input id="pw" type="number" step="any" min="0.5" max="0.999" value="0.90">
+<label for="ne">n a evaluar (observaciones por tratamiento)</label>
+<input id="ne" type="number" step="1" min="2" placeholder="Propón un valor de n">
+<button id="go" type="button">Agregar iteración</button>
+<button id="clr" type="button" class="sec">Borrar iteraciones</button>
+<div class="hint">El programa no calcula ν₁, ν₂, Φ ni β. ν₁, ν₂ y Φ se escriben en la tabla; β se lee en la gráfica.</div>
+<p class="err" id="err" role="alert"></p>
+</section>
+<div class="stack">
+<section class="card"><h2>Curvas OC: β contra Φ</h2><div id="oc"></div><div class="leg" id="leg"></div><p class="hint">Mueve el cursor (o toca) sobre la gráfica para leer Φ y β. Selecciona la fila activa en la tabla y haz clic en la intersección de tu guía vertical con la curva para registrar β.</p></section>
+<section class="card"><h2>Mis iteraciones</h2><div class="tw" id="tb"></div></section>
+<section class="card"><h2>Potencia de las n evaluadas (con tus valores de β)</h2><div id="pc"></div></section>
+</div>
+</div>
+</main>
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+function lg(x){const c=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];let y=x,t=x+5.5;t-=(x+.5)*Math.log(t);let s=1.000000000190015;for(let j=0;j<6;j++)s+=c[j]/++y;return -t+Math.log(2.5066282746310005*s/x)}
+function bcf(x,a,b){const F=1e-300,qab=a+b,qap=a+1,qam=a-1;let c=1,d=1-qab*x/qap;if(Math.abs(d)<F)d=F;d=1/d;let h=d;for(let m=1;m<=300;m++){const m2=2*m;let aa=m*(b-m)*x/((qam+m2)*(a+m2));d=1+aa*d;if(Math.abs(d)<F)d=F;c=1+aa/c;if(Math.abs(c)<F)c=F;d=1/d;h*=d*c;aa=-(a+m)*(qab+m)*x/((a+m2)*(qap+m2));d=1+aa*d;if(Math.abs(d)<F)d=F;c=1+aa/c;if(Math.abs(c)<F)c=F;d=1/d;const del=d*c;h*=del;if(Math.abs(del-1)<3e-14)break}return h}
+function ib(x,a,b){if(x<=0)return 0;if(x>=1)return 1;const bt=Math.exp(lg(a+b)-lg(a)-lg(b)+a*Math.log(x)+b*Math.log(1-x));return x<(a+1)/(a+b+2)?bt*bcf(x,a,b)/a:1-bt*bcf(1-x,b,a)/b}
+const fcdf=(x,v1,v2)=>ib(v1*x/(v1*x+v2),v1/2,v2/2);
+function fq(p,v1,v2){let lo=0,hi=1;while(fcdf(hi,v1,v2)<p)hi*=2;for(let i=0;i<60;i++){const m=(lo+hi)/2;fcdf(m,v1,v2)<p?lo=m:hi=m}return(lo+hi)/2}
+function ncf(x,v1,v2,lam){if(lam<1e-9)return fcdf(x,v1,v2);const mu=lam/2,y=v1*x/(v1*x+v2),J=Math.ceil(mu+10*Math.sqrt(mu)+40);let s=0;for(let j=0;j<=J;j++){s+=Math.exp(-mu+j*Math.log(mu)-lg(j+1))*ib(y,v1/2+j,v2/2)}return Math.min(1,s)}
+
+
+
+let A,AL,PW,its=[],act=0,G={};
+const betaPhi=(phi,v1,v2)=>ncf(fq(1-AL,v1,v2),v1,v2,(v1+1)*phi*phi);
+function params(){
+ const err=$("err");err.textContent="";
+ A=Math.round(+$("a").value);AL=+$("al").value;PW=+$("pw").value;
+ if(!(A>=2)||!(AL>0&&AL<.5)||!(PW>.5&&PW<1)){err.textContent="Revisa los datos: a ≥ 2, 0 < α < 0.5 y 0.5 < potencia < 1.";return false}
+ return true;
+}
+const num=x=>x!==""&&isFinite(+x)&&+x>0;
+const cumple=p=>num(p.b)?(+p.b<=1-PW?"Sí":"No"):"—";
+function drawOC(){
+ const pts=its.filter(p=>num(p.phi)&&num(p.b)),guides=its.filter(p=>num(p.phi)),last=[...its].reverse().find(p=>num(p.v2));
+ const W=640,H=420,m={l:52,r:14,t:12,b:40},w=W-m.l-m.r,h=H-m.t-m.b,x0=0.3,x1=Math.max(3.5,...guides.map(p=>+p.phi+0.5)),ymin=0.003;
+ const X=p=>m.l+(p-x0)/(x1-x0)*w,Y=b=>m.t+(0-Math.log10(Math.max(b,ymin)))/(0-Math.log10(ymin))*h;
+ G={W,H,m,w,h,x0,x1,ymin};
+ let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Curvas características de operación">`;
+ for(const d of [.1,.01,.001])for(let k=2;k<=9;k++){const b=d*k;if(b>=ymin&&b<1)s+=`<line x1="${m.l}" x2="${W-m.r}" y1="${Y(b)}" y2="${Y(b)}" style="stroke:var(--line)" stroke-width=".4"/>`}
+ for(const b of [1,.5,.3,.2,.1,.05,.03,.02,.01,.005,.003]){s+=`<line x1="${m.l}" x2="${W-m.r}" y1="${Y(b)}" y2="${Y(b)}" style="stroke:var(--line)"/><text x="${m.l-6}" y="${Y(b)+4}" text-anchor="end">${b}</text>`}
+ for(let p=Math.ceil(x0*10)/10;p<=x1+1e-9;p+=0.1){const major=Math.abs(p*2-Math.round(p*2))<1e-6;s+=`<line x1="${X(p)}" x2="${X(p)}" y1="${m.t}" y2="${m.t+h}" style="stroke:var(--line)" stroke-width="${major?1.2:.5}"/>`;if(major)s+=`<text x="${X(p)}" y="${m.t+h+16}" text-anchor="middle">${p.toFixed(1)}</text>`}
+ s+=`<text x="${m.l+w/2}" y="${H-6}" text-anchor="middle">Φ</text><text transform="translate(12 ${m.t+h/2}) rotate(-90)" text-anchor="middle">β (escala logarítmica)</text>`;
+ const list=[6,10,20,30,60,120,3000],leg=[],V1=A-1;
+ const path=(v1,v2)=>{let d="";for(let k=0;k<=80;k++){const p=x0+(x1-x0)*k/80;d+=(k?"L":"M")+X(p).toFixed(1)+" "+Y(betaPhi(p,v1,v2)).toFixed(1)}return d};
+ list.forEach((v,i)=>{s+=`<path d="${path(V1,v)}" fill="none" style="stroke:var(--c${i+1})" stroke-width="1.6"/>`;leg.push([`var(--c${i+1})`,v>=3000?"ν₂ = ∞":"ν₂ = "+v])});
+ if(last){const v2=Math.round(+last.v2),v1=num(last.v1)?Math.round(+last.v1):V1;
+  if(v2>=2&&v1>=1&&(v1!==V1||!list.includes(v2))){s+=`<path d="${path(v1,v2)}" fill="none" style="stroke:var(--acc)" stroke-width="2.4" stroke-dasharray="6 3"/>`;leg.push(["var(--acc)",`ν₁ = ${v1}, ν₂ = ${v2} (última iteración)`])}}
+ s+=`<line x1="${m.l}" x2="${W-m.r}" y1="${Y(1-PW)}" y2="${Y(1-PW)}" style="stroke:var(--warn)" stroke-dasharray="4 4" stroke-width="1.4"/><text x="${W-m.r-4}" y="${Y(1-PW)-5}" text-anchor="end" style="fill:var(--warn)">β máximo = ${+(1-PW).toFixed(3)}</text>`;
+ guides.forEach(p=>{s+=`<line x1="${X(+p.phi)}" x2="${X(+p.phi)}" y1="${m.t}" y2="${m.t+h}" style="stroke:var(--ink)" stroke-width="1" stroke-dasharray="2 3"/>`});
+ pts.forEach(p=>{s+=`<line x1="${m.l}" x2="${X(+p.phi)}" y1="${Y(+p.b)}" y2="${Y(+p.b)}" style="stroke:var(--ink)" stroke-width="1" stroke-dasharray="2 3"/>`});
+ pts.forEach(p=>{s+=`<circle cx="${X(+p.phi)}" cy="${Y(+p.b)}" r="5" style="fill:var(--ink)"/><text x="${Math.min(X(+p.phi)+8,W-50)}" y="${Y(+p.b)-8}" style="fill:var(--ink);font-weight:600">n = ${p.n}</text>`});
+ s+=`<g id="xh" style="display:none;pointer-events:none"><line id="xv" y1="${m.t}" y2="${m.t+h}" style="stroke:var(--acc)" stroke-width="1"/><line id="xz" x1="${m.l}" x2="${W-m.r}" style="stroke:var(--acc)" stroke-width="1"/><text id="xt" style="fill:var(--ink);font-weight:600"></text></g><rect id="cap" x="${m.l}" y="${m.t}" width="${w}" height="${h}" fill="transparent" style="cursor:crosshair"/>`;
+ $("oc").innerHTML=s+"</svg>";bindXH();
+ $("leg").innerHTML=leg.map(l=>`<span><i style="background:${l[0]}"></i>${l[1]}</span>`).join("");
+}
+function bindXH(){
+ const svg=$("oc").querySelector("svg"),cap=svg.querySelector("#cap"),g=svg.querySelector("#xh");
+ const pos=e=>{const r=svg.getBoundingClientRect(),px=(e.clientX-r.left)*G.W/r.width,py=(e.clientY-r.top)*G.H/r.height;
+  return{px,py,phi:G.x0+(px-G.m.l)/G.w*(G.x1-G.x0),beta:Math.min(1,Math.pow(10,-(py-G.m.t)/G.h*Math.log10(1/G.ymin)))}};
+ const show=e=>{const q=pos(e);g.style.display="";
+  const xv=g.querySelector("#xv"),xz=g.querySelector("#xz"),xt=g.querySelector("#xt");
+  xv.setAttribute("x1",q.px);xv.setAttribute("x2",q.px);xz.setAttribute("y1",q.py);xz.setAttribute("y2",q.py);
+  xt.textContent=`Φ = ${q.phi.toFixed(2)} · β = ${q.beta<0.01?q.beta.toFixed(4):q.beta.toFixed(3)}`;
+  xt.setAttribute("x",q.px>G.W-190?q.px-176:q.px+8);xt.setAttribute("y",Math.max(q.py-8,G.m.t+14))};
+ cap.addEventListener("pointermove",show);cap.addEventListener("pointerdown",show);
+ cap.addEventListener("pointerleave",()=>{g.style.display="none"});
+ cap.addEventListener("click",e=>setBeta(+pos(e).beta.toPrecision(2)));
+}
+function setBeta(v){
+ const err=$("err");err.textContent="";
+ if(!its.length){err.textContent="Primero agrega una iteración (un valor de n) para registrar la lectura de β.";return}
+ const p=its[act];p.b=String(v);
+ const inp=$("tb").querySelector(`input[data-i="${act}"][data-k="b"]`);if(inp)inp.value=p.b;
+ const ok=$("ok"+act);if(ok)ok.textContent=cumple(p);
+ drawAll();
+}
+function drawPW(){
+ const pts=its.filter(p=>num(p.b)&&+p.b<1).sort((a,b)=>a.n-b.n);
+ const W=640,H=280,m={l:52,r:14,t:12,b:40},w=W-m.l-m.r,h=H-m.t-m.b,nMax=Math.max(15,...its.map(p=>p.n+5));
+ const X=n=>m.l+(n-2)/(nMax-2)*w,Y=p=>m.t+(1-p)*h;
+ let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Potencia de las n evaluadas">`;
+ for(const p of [0,.2,.4,.6,.8,1]){s+=`<line x1="${m.l}" x2="${W-m.r}" y1="${Y(p)}" y2="${Y(p)}" style="stroke:var(--line)"/><text x="${m.l-6}" y="${Y(p)+4}" text-anchor="end">${p}</text>`}
+ const step=nMax>40?10:5;for(let n=step;n<=nMax;n+=step)s+=`<text x="${X(n)}" y="${m.t+h+16}" text-anchor="middle">${n}</text>`;
+ s+=`<text x="${m.l+w/2}" y="${H-6}" text-anchor="middle">n por tratamiento</text><text transform="translate(12 ${m.t+h/2}) rotate(-90)" text-anchor="middle">Potencia (1 − β)</text>`;
+ s+=`<line x1="${m.l}" x2="${W-m.r}" y1="${Y(PW)}" y2="${Y(PW)}" style="stroke:var(--warn)" stroke-dasharray="4 4" stroke-width="1.4"/><text x="${W-m.r-4}" y="${Y(PW)-5}" text-anchor="end" style="fill:var(--warn)">potencia mínima ${PW}</text>`;
+ if(pts.length>1)s+=`<path d="${pts.map((p,i)=>(i?"L":"M")+X(p.n).toFixed(1)+" "+Y(1-p.b).toFixed(1)).join("")}" fill="none" style="stroke:var(--acc)" stroke-width="1.6"/>`;
+ pts.forEach(p=>{s+=`<circle cx="${X(p.n)}" cy="${Y(1-p.b)}" r="5" style="fill:var(--acc)"/><text x="${X(p.n)+8}" y="${Y(1-p.b)+15}" style="fill:var(--ink)">n = ${p.n}</text>`});
+ $("pc").innerHTML=s+"</svg>";
+}
+function drawAll(){if(params()){drawOC();drawPW()}}
+function renderTable(){
+ if(!its.length){$("tb").innerHTML='<p class="hint">Aún no hay iteraciones. Escribe un n y presiona «Agregar iteración».</p>';return}
+ const nm={v1:"ν₁",v2:"ν₂",phi:"Φ",b:"β"};
+ let r="<table><tr><th>#</th><th>n</th><th>ν₁</th><th>ν₂</th><th>Φ</th><th>β (leído en la gráfica)</th><th>¿Cumple?</th></tr>";
+ its.forEach((p,i)=>{const inp=k=>`<td><input type="number" step="any" data-i="${i}" data-k="${k}" value="${p[k]}" aria-label="${nm[k]} de la iteración ${i+1}"${k==="b"?' readonly placeholder="clic en la gráfica"':""}></td>`;
+  r+=`<tr><td><label style="display:flex;gap:4px;align-items:center;margin:0;color:var(--ink)"><input type="radio" name="act" value="${i}" ${i===act?"checked":""} style="width:auto" aria-label="Fila activa: iteración ${i+1}">${i+1}</label></td><td>${p.n}</td>${inp("v1")}${inp("v2")}${inp("phi")}${inp("b")}<td id="ok${i}">${cumple(p)}</td></tr>`});
+ $("tb").innerHTML=r+"</table>";
+ $("tb").querySelectorAll('input[type="number"]').forEach(el=>el.addEventListener("input",()=>{const p=its[+el.dataset.i];p[el.dataset.k]=el.value;$("ok"+el.dataset.i).textContent=cumple(p);drawAll()}));
+ $("tb").querySelectorAll('input[type="radio"]').forEach(el=>el.addEventListener("change",()=>{act=+el.value}));
+}
+function addIter(){
+ if(!params())return;
+ const n=Math.round(+$("ne").value);
+ if(!(n>=2&&n<=400)){$("err").textContent="Escribe un n entero entre 2 y 400.";return}
+ if(!its.some(p=>p.n===n))its.push({n,v1:"",v2:"",phi:"",b:""});act=its.findIndex(p=>p.n===n);
+ renderTable();drawAll();$("ne").value="";$("ne").focus();
+}
+$("mode").addEventListener("change",()=>{const d=$("mode").value==="D";$("efflab").textContent=d?"D (diferencia mínima)":"Στᵢ²";$("eff").value=d?15:1016.75});
+$("go").addEventListener("click",addIter);
+$("clr").addEventListener("click",()=>{its=[];act=0;$("ne").value="";renderTable();drawAll()});
+$("ne").addEventListener("keydown",e=>{if(e.key==="Enter")addIter()});
+["a","al","pw"].forEach(id=>$(id).addEventListener("input",drawAll));
+renderTable();drawAll();
+</script>
+</body>
+</html>
